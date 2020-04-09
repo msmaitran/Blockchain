@@ -44,8 +44,7 @@ class Blockchain(object):
             'timestamp': time(),
             'transactions': self.current_transactions,
             'proof': proof,
-            'previous_hash': previous_hash or self.hash(self.chain[-1]),
-            'hash': current_hash,
+            'previous_hash': previous_hash or self.hash(self.chain[-1])
         }
 
         # Reset the current list of transactions
@@ -92,35 +91,35 @@ class Blockchain(object):
     def last_block(self):
         return self.chain[-1]
 
-    def proof_of_work(self):
-        """
-        Simple Proof of Work Algorithm
-        Stringify the block and look for a proof.
-        Loop through possibilities, checking each one against `valid_proof`
-        in an effort to find a number that is a valid proof
-        :return: A valid proof for the provided block
-        """
-        block_string = json.dumps(self.last_block, sort_keys=True)
-        proof = 0
-        while not self.valid_proof(block_string, proof):
-            proof += 1
-        return proof
+    # def proof_of_work(self):
+    #     """
+    #     Simple Proof of Work Algorithm
+    #     Stringify the block and look for a proof.
+    #     Loop through possibilities, checking each one against `valid_proof`
+    #     in an effort to find a number that is a valid proof
+    #     :return: A valid proof for the provided block
+    #     """
+    #     block_string = json.dumps(self.last_block, sort_keys=True)
+    #     proof = 0
+    #     while not self.valid_proof(block_string, proof):
+    #         proof += 1
+    #     return proof
 
-    @staticmethod
-    def valid_proof(block_string, proof):
-        """
-        Validates the Proof:  Does hash(block_string, proof) contain 3
-        leading zeroes?  Return true if the proof is valid
-        :param block_string: <string> The stringified block to use to
-        check in combination with `proof`
-        :param proof: <int?> The value that when combined with the
-        stringified previous block results in a hash that has the
-        correct number of leading zeroes.
-        :return: True if the resulting hash is a valid proof, False otherwise
-        """
-        guess = f"{block_string}{proof}".encode()
-        guess_hash = hashlib.sha256(guess).hexdigest()
-        return guess_hash[:4] == "0000"
+    # @staticmethod
+    # def valid_proof(block_string, proof):
+    #     """
+    #     Validates the Proof:  Does hash(block_string, proof) contain 3
+    #     leading zeroes?  Return true if the proof is valid
+    #     :param block_string: <string> The stringified block to use to
+    #     check in combination with `proof`
+    #     :param proof: <int?> The value that when combined with the
+    #     stringified previous block results in a hash that has the
+    #     correct number of leading zeroes.
+    #     :return: True if the resulting hash is a valid proof, False otherwise
+    #     """
+    #     guess = f"{block_string}{proof}".encode()
+    #     guess_hash = hashlib.sha256(guess).hexdigest()
+    #     return guess_hash[:6] == "000000"
 
 
 # Instantiate our Node
@@ -133,22 +132,43 @@ node_identifier = str(uuid4()).replace('-', '')
 blockchain = Blockchain()
 
 
-@app.route('/mine', methods=['GET'])
+@app.route('/mine', methods=['POST'])
 def mine():
     # Run the proof of work algorithm to get the next proof
-    proof = blockchain.proof_of_work()
+    # proof = blockchain.proof_of_work()
 
     # Forge the new Block by adding it to the chain with the proof
-    previous_hash = blockchain.hash(blockchain.last_block)
-    block = blockchain.new_block(proof, previous_hash)
+    # previous_hash = blockchain.hash(blockchain.last_block)
+    # block = blockchain.new_block(proof, previous_hash)
 
-    response = {
-        'message': "New Block Forged",
-        'index': block['index'],
-        'transactions': block['transactions'],
-        'proof': block['proof'],
-        'previous_hash': block['previous_hash'],
-    }
+    # response = {
+    #     'message': "New Block Forged",
+    #     'index': block['index'],
+    #     'transactions': block['transactions'],
+    #     'proof': block['proof'],
+    #     'previous_hash': block['previous_hash'],
+    # }
+
+    data = request.get_json()
+    if not data.get('proof') or not data.get('id'):
+        response = {
+            'message': "Invalid request"
+        }
+        return jsonify(response), 400
+    else: 
+        proof = data.get('proof')
+        block_string = json.dumps(blockchain.last_block, sort_keys=True)
+        valid = blockchain.valid_proof(block_string, proof)
+        if valid:
+            previous_hash = blockchain.hash(blockchain.last_block)
+            blockchain.new_block(proof, previous_hash)
+            response = {
+                'message': "New Block Forged"
+            }
+        else: 
+            response = {
+                'message': "Unsuccessful"
+            }
 
     return jsonify(response), 200
 
